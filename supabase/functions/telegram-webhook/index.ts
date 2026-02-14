@@ -1,0 +1,161 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const BLOCKED_EXTENSIONS = [".exe", ".bat", ".cmd", ".js"];
+const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    if (!BOT_TOKEN) {
+      return new Response(JSON.stringify({ error: "Bot token not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const update = await req.json();
+
+    // Handle /start command
+    if (update.message?.text === "/start") {
+      const chatId = update.message.chat.id;
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: "مرحباً بك في DarkCyberX Cloud! ☁️\n\nأرسل لي أي ملف وسأعطيك رابط تحميل مباشر.\n\n📏 الحد الأقصى: 2GB\n❌ الملفات الممنوعة: .exe, .bat, .cmd, .js",
+          parse_mode: "HTML",
+        }),
+      });
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Handle document/file
+    const doc = update.message?.document;
+    if (!doc) {
+      return new Response(JSON.stringify({ ok: true, msg: "no document" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const chatId = update.message.chat.id;
+    const filename = doc.file_name || "unnamed_file";
+    const fileSize = doc.file_size || 0;
+    const mimeType = doc.mime_type || "application/octet-stream";
+    const fileId = doc.file_id;
+
+    // Check blocked extensions
+    const ext = filename.toLowerCase().split(".").pop();
+    if (BLOCKED_EXTENSIONS.some((b) => filename.toLowerCase().endsWith(b))) {
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: `❌ نوع الملف .${ext} غير مسموح به.`,
+        }),
+      });
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Check file size
+    if (fileSize > MAX_FILE_SIZE) {
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: "❌ حجم الملف يتجاوز 2GB.",
+        }),
+      });
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Find user by telegram_id
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("telegram_id", chatId)
+      .single();
+
+    if (!profile) {
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: "❌ يجب تسجيل الدخول في الموقع أولاً.",
+        }),
+      });
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Save file record
+    const slug = crypto.randomUUID().replace(/-/g, "").substring(0, 12);
+    const { error: insertError } = await supabase.from("files").insert({
+      user_id: profile.id,
+      telegram_file_id: fileId,
+      filename,
+      size: fileSize,
+      mime_type: mimeType,
+      unique_slug: slug,
+    });
+
+    if (insertError) {
+      console.error("Insert error:", insertError);
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: "❌ حدث خطأ أثناء حفظ الملف." }),
+      });
+      return new Response(JSON.stringify({ ok: false }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Send success message
+    const siteUrl = Deno.env.get("SITE_URL") || "https://darkcyberx.com";
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: `✅ تم رفع الملف بنجاح!\n\n📄 ${filename}\n📏 ${(fileSize / 1048576).toFixed(2)} MB\n\n🔗 رابط التحميل:\n${siteUrl}/d/${slug}`,
+        parse_mode: "HTML",
+      }),
+    });
+
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error("Webhook error:", err);
+    return new Response(JSON.stringify({ error: "Internal error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
