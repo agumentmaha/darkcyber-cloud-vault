@@ -1,24 +1,63 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Download, FileIcon, Cloud, Shield } from "lucide-react";
+import { Download, FileIcon, Cloud, Shield, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 
 const DownloadPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const [downloading, setDownloading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [file, setFile] = useState<any>(null);
+  const [error, setError] = useState("");
 
-  // TODO: Fetch file info from DB using slug
-  const file = {
-    filename: "example-file.zip",
-    size: 52428800,
-    mime_type: "application/zip",
-  };
+  useEffect(() => {
+    const fetchFile = async () => {
+      if (!slug) return;
+      const { data, error: fetchError } = await supabase
+        .from("files")
+        .select("filename, size, mime_type, unique_slug")
+        .eq("unique_slug", slug)
+        .eq("is_blocked", false)
+        .maybeSingle();
+
+      if (fetchError || !data) {
+        setError("الملف غير موجود أو تم حذفه");
+      } else {
+        setFile(data);
+      }
+      setLoading(false);
+    };
+    fetchFile();
+  }, [slug]);
 
   const handleDownload = async () => {
+    if (!slug) return;
     setDownloading(true);
-    // TODO: Call edge function to get Telegram CDN link
-    setTimeout(() => setDownloading(false), 2000);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("get-download-link", {
+        body: null,
+        headers: {},
+      });
+
+      // Use query params approach
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-download-link?slug=${slug}`,
+        { headers: { "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
+      );
+      const result = await res.json();
+
+      if (result.url) {
+        window.open(result.url, "_blank");
+      } else {
+        setError(result.error || "فشل في الحصول على رابط التحميل");
+      }
+    } catch (err) {
+      setError("حدث خطأ أثناء التحميل");
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const formatSize = (bytes: number) => {
@@ -41,45 +80,53 @@ const DownloadPage = () => {
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md space-y-6">
-          {/* Ad space top */}
           <div className="p-3 rounded-xl border border-border bg-muted/30 text-center">
             <p className="text-xs text-muted-foreground">إعلان</p>
           </div>
 
-          <Card className="border-primary/30 bg-card">
-            <CardContent className="p-8 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6 animate-pulse-glow">
-                <FileIcon className="w-8 h-8 text-primary" />
-              </div>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : error ? (
+            <Card className="border-destructive/30 bg-card">
+              <CardContent className="p-8 text-center">
+                <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                <p className="text-destructive font-bold">{error}</p>
+              </CardContent>
+            </Card>
+          ) : file ? (
+            <Card className="border-primary/30 bg-card">
+              <CardContent className="p-8 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6 animate-pulse-glow">
+                  <FileIcon className="w-8 h-8 text-primary" />
+                </div>
 
-              <h1 className="text-xl font-bold font-cyber mb-2">{file.filename}</h1>
-              <p className="text-muted-foreground text-sm mb-1">الحجم: {formatSize(file.size)}</p>
-              <p className="text-muted-foreground text-sm mb-8">النوع: {file.mime_type}</p>
+                <h1 className="text-xl font-bold font-cyber mb-2">{file.filename}</h1>
+                <p className="text-muted-foreground text-sm mb-1">الحجم: {formatSize(file.size)}</p>
+                <p className="text-muted-foreground text-sm mb-8">النوع: {file.mime_type || "غير معروف"}</p>
 
-              <Button
-                size="lg"
-                onClick={handleDownload}
-                disabled={downloading}
-                className="w-full text-lg py-6 glow-purple font-cyber"
-              >
-                {downloading ? (
-                  "جارٍ التحضير..."
-                ) : (
-                  <>
-                    <Download className="w-5 h-5 ml-2" />
-                    تحميل الملف
-                  </>
-                )}
-              </Button>
+                <Button
+                  size="lg"
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="w-full text-lg py-6 glow-purple font-cyber"
+                >
+                  {downloading ? (
+                    <><Loader2 className="w-5 h-5 ml-2 animate-spin" /> جارٍ التحضير...</>
+                  ) : (
+                    <><Download className="w-5 h-5 ml-2" /> تحميل الملف</>
+                  )}
+                </Button>
 
-              <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
-                <Shield className="w-3 h-3" />
-                <span>تحميل آمن عبر Telegram CDN</span>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
+                  <Shield className="w-3 h-3" />
+                  <span>تحميل آمن عبر Telegram CDN</span>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
 
-          {/* Ad space bottom */}
           <div className="p-3 rounded-xl border border-border bg-muted/30 text-center">
             <p className="text-xs text-muted-foreground">إعلان</p>
           </div>

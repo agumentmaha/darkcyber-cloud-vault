@@ -1,16 +1,52 @@
-import { useState } from "react";
-import { Search, Ban, CheckCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Search, Ban, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const AdminUsers = () => {
   const [search, setSearch] = useState("");
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  // TODO: Fetch from Supabase
-  const users: any[] = [];
+  const fetchUsers = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setUsers(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchUsers(); }, []);
+
+  const toggleBan = async (userId: string, currentBan: boolean) => {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_banned: !currentBan })
+      .eq("id", userId);
+    if (error) {
+      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: currentBan ? "تم إلغاء الحظر" : "تم حظر المستخدم" });
+      fetchUsers();
+    }
+  };
+
+  const filtered = users.filter((u) =>
+    (u.username || "").toLowerCase().includes(search.toLowerCase()) ||
+    (u.telegram_id?.toString() || "").includes(search)
+  );
+
+  if (loading) {
+    return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -24,39 +60,44 @@ const AdminUsers = () => {
 
       <Card className="border-border bg-card">
         <CardContent className="p-0">
-          {users.length === 0 ? (
-            <p className="text-muted-foreground text-center py-12">لا يوجد مستخدمون بعد</p>
+          {filtered.length === 0 ? (
+            <p className="text-muted-foreground text-center py-12">لا يوجد مستخدمون</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-right">المستخدم</TableHead>
-                  <TableHead className="text-right">Telegram ID</TableHead>
-                  <TableHead className="text-right">الملفات</TableHead>
-                  <TableHead className="text-right">الحالة</TableHead>
-                  <TableHead className="text-right">إجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user: any) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.username}</TableCell>
-                    <TableCell>{user.telegram_id}</TableCell>
-                    <TableCell>0</TableCell>
-                    <TableCell>
-                      <Badge variant={user.is_banned ? "destructive" : "default"}>
-                        {user.is_banned ? "محظور" : "نشط"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm">
-                        {user.is_banned ? <CheckCircle className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
-                      </Button>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-right">المستخدم</TableHead>
+                    <TableHead className="text-right">Telegram ID</TableHead>
+                    <TableHead className="text-right">التسجيل</TableHead>
+                    <TableHead className="text-right">الحالة</TableHead>
+                    <TableHead className="text-right">إجراءات</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="flex items-center gap-2">
+                        {user.avatar_url && <img src={user.avatar_url} alt="" className="w-6 h-6 rounded-full" />}
+                        {user.username || "—"}
+                      </TableCell>
+                      <TableCell>{user.telegram_id || "—"}</TableCell>
+                      <TableCell>{new Date(user.created_at).toLocaleDateString("ar")}</TableCell>
+                      <TableCell>
+                        <Badge variant={user.is_banned ? "destructive" : "default"}>
+                          {user.is_banned ? "محظور" : "نشط"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" onClick={() => toggleBan(user.id, user.is_banned)}>
+                          {user.is_banned ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Ban className="w-4 h-4 text-destructive" />}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

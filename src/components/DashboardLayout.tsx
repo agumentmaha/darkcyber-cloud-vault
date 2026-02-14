@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Cloud, Files, Upload, BarChart3, LogOut, Menu, X, Home, Settings } from "lucide-react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Cloud, Files, Upload, LogOut, Menu, X, Home, Shield } from "lucide-react";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { label: "الرئيسية", icon: Home, path: "/dashboard" },
@@ -13,15 +14,20 @@ const navItems = [
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { profile, isAdmin, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
       <aside className={cn(
         "fixed lg:static inset-y-0 right-0 z-50 w-64 bg-card border-l border-border transition-transform lg:transition-none",
         sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
@@ -55,26 +61,41 @@ const DashboardLayout = () => {
               {item.label}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-all"
+            >
+              <Shield className="w-5 h-5" />
+              لوحة الأدمن
+            </Link>
+          )}
         </nav>
 
         <div className="absolute bottom-4 left-4 right-4">
-          <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive">
+          <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive" onClick={handleSignOut}>
             <LogOut className="w-5 h-5 ml-2" />
             تسجيل الخروج
           </Button>
         </div>
       </aside>
 
-      {/* Main */}
       <div className="flex-1 flex flex-col min-h-screen">
         <header className="h-16 border-b border-border flex items-center justify-between px-4 bg-card/50">
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
             <Menu className="w-5 h-5" />
           </Button>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-xs font-cyber text-primary">U</span>
-            </div>
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="" className="w-8 h-8 rounded-full" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-xs font-cyber text-primary">
+                  {profile?.username?.charAt(0)?.toUpperCase() || "U"}
+                </span>
+              </div>
+            )}
+            <span className="text-sm text-muted-foreground hidden sm:block">{profile?.username}</span>
           </div>
         </header>
 
