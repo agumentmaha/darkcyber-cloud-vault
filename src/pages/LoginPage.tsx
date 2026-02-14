@@ -6,7 +6,7 @@ const LoginPage = () => {
   const handleTelegramLogin = () => {
     // Telegram Login Widget will be integrated here
     // For now, show instructions
-    window.open("https://t.me/DarkCyberXBot", "_blank");
+    window.open("https://t.me/T7meelExpressBot", "_blank");
   };
 
   return (
