@@ -27,7 +27,7 @@ const AdBanner = ({ placement }: AdBannerProps) => {
       {ads.map((ad) => (
         <div
           key={ad.id}
-          className="rounded-xl border border-border bg-muted/30 overflow-hidden"
+          className="w-full overflow-hidden [&_iframe]:!w-full [&_iframe]:!min-h-[90px] [&_div]:!w-full"
           dangerouslySetInnerHTML={{ __html: ad.code }}
         />
       ))}

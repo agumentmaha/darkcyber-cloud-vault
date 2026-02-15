@@ -2,6 +2,7 @@ import { Cloud, Download, Shield, Zap, Send, Link, ArrowRight } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Link as RouterLink } from "react-router-dom";
 import { motion } from "framer-motion";
+import AdBanner from "@/components/AdBanner";
 
 const features = [
   { icon: Cloud, title: "تخزين 2GB مجاناً", desc: "ارفع ملفات حتى 2 جيجا بدون أي رسوم" },
@@ -151,6 +152,13 @@ const LandingPage = () => {
               </Button>
             </RouterLink>
           </div>
+        </div>
+      </section>
+
+      {/* Ads */}
+      <section className="py-6 px-4">
+        <div className="container mx-auto max-w-3xl">
+          <AdBanner placement="dashboard" />
         </div>
       </section>
 
