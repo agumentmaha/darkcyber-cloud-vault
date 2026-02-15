@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AdBannerProps {
@@ -7,6 +7,7 @@ interface AdBannerProps {
 
 const AdBanner = ({ placement }: AdBannerProps) => {
   const [ads, setAds] = useState<any[]>([]);
+  const containerRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   useEffect(() => {
     const fetchAds = async () => {
@@ -20,6 +21,30 @@ const AdBanner = ({ placement }: AdBannerProps) => {
     fetchAds();
   }, [placement]);
 
+  useEffect(() => {
+    // Re-inject ad HTML so that iframes and scripts load properly
+    ads.forEach((ad) => {
+      const container = containerRefs.current.get(ad.id);
+      if (container) {
+        container.innerHTML = "";
+        const range = document.createRange();
+        range.selectNode(container);
+        const fragment = range.createContextualFragment(ad.code);
+        container.appendChild(fragment);
+
+        // Fix iframes: ensure proper sizing
+        const iframes = container.querySelectorAll("iframe");
+        iframes.forEach((iframe) => {
+          iframe.style.width = "100%";
+          iframe.style.minHeight = "250px";
+          iframe.style.height = "250px";
+          iframe.style.border = "none";
+          iframe.style.display = "block";
+        });
+      }
+    });
+  }, [ads]);
+
   if (ads.length === 0) return null;
 
   return (
@@ -27,8 +52,10 @@ const AdBanner = ({ placement }: AdBannerProps) => {
       {ads.map((ad) => (
         <div
           key={ad.id}
-          className="w-full overflow-hidden [&_iframe]:!w-full [&_iframe]:!min-h-[90px] [&_div]:!w-full"
-          dangerouslySetInnerHTML={{ __html: ad.code }}
+          className="w-full overflow-hidden"
+          ref={(el) => {
+            if (el) containerRefs.current.set(ad.id, el);
+          }}
         />
       ))}
     </div>
