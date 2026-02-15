@@ -13,6 +13,22 @@ const DownloadPage = () => {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // Show In-App Interstitial ad
+    if (typeof (window as any).show_10611492 === "function") {
+      (window as any).show_10611492({
+        type: 'inApp',
+        inAppSettings: {
+          frequency: 2,
+          capping: 0.1,
+          interval: 30,
+          timeout: 5,
+          everyPage: false
+        }
+      });
+    }
+  }, []);
+
+  useEffect(() => {
     const fetchFile = async () => {
       if (!slug) return;
       const { data, error: fetchError } = await supabase
