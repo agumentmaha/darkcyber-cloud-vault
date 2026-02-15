@@ -6,7 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const BLOCKED_EXTENSIONS = [".exe", ".bat", ".cmd", ".js"];
 const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
 
 serve(async (req) => {
@@ -38,7 +37,7 @@ serve(async (req) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: chatId,
-          text: "مرحباً بك في DarkCyberX Cloud! ☁️\n\nأرسل لي أي ملف وسأعطيك رابط تحميل مباشر.\n\n📏 الحد الأقصى: 2GB\n❌ الملفات الممنوعة: .exe, .bat, .cmd, .js\n\n🤖 @T7meelExpressBot",
+          text: "مرحباً بك في DarkCyberX Cloud! ☁️\n\nأرسل لي أي ملف وسأعطيك رابط تحميل مباشر.\n\n📏 الحد الأقصى: 2GB\n\n🤖 @T7meelExpressBot",
           parse_mode: "HTML",
         }),
       });
@@ -61,21 +60,7 @@ serve(async (req) => {
     const mimeType = doc.mime_type || "application/octet-stream";
     const fileId = doc.file_id;
 
-    // Check blocked extensions
     const ext = filename.toLowerCase().split(".").pop();
-    if (BLOCKED_EXTENSIONS.some((b) => filename.toLowerCase().endsWith(b))) {
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: `❌ نوع الملف .${ext} غير مسموح به.`,
-        }),
-      });
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     // Check file size
     if (fileSize > MAX_FILE_SIZE) {
