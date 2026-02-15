@@ -4,6 +4,7 @@ import { Download, FileIcon, Cloud, Shield, Loader2, AlertTriangle } from "lucid
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import AdBanner from "@/components/AdBanner";
 
 const DownloadPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -96,9 +97,7 @@ const DownloadPage = () => {
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md space-y-6">
-          <div className="p-3 rounded-xl border border-border bg-muted/30 text-center">
-            <p className="text-xs text-muted-foreground">إعلان</p>
-          </div>
+          <AdBanner placement="download_page" />
 
           {loading ? (
             <div className="flex justify-center py-12">
@@ -143,9 +142,7 @@ const DownloadPage = () => {
             </Card>
           ) : null}
 
-          <div className="p-3 rounded-xl border border-border bg-muted/30 text-center">
-            <p className="text-xs text-muted-foreground">إعلان</p>
-          </div>
+          <AdBanner placement="download_page" />
 
           <p className="text-center text-xs text-muted-foreground">
             تم الرفع عبر{" "}

@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
+import AdBanner from "@/components/AdBanner";
 
 const DashboardHome = () => {
   const { user } = useAuth();
@@ -111,9 +112,7 @@ const DashboardHome = () => {
         </CardContent>
       </Card>
 
-      <div className="p-4 rounded-xl border border-border bg-muted/30 text-center">
-        <p className="text-xs text-muted-foreground">مساحة إعلانية</p>
-      </div>
+      <AdBanner placement="dashboard" />
     </div>
   );
 };
