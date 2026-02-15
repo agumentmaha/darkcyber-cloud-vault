@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Cloud, Send, Loader2 } from "lucide-react";
+import { Cloud, Send, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +14,9 @@ const LoginPage = () => {
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
   const [loggingIn, setLoggingIn] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
   const widgetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -22,7 +26,6 @@ const LoginPage = () => {
   }, [user, isLoading, navigate]);
 
   useEffect(() => {
-    // Define the global callback
     (window as any).onTelegramAuth = async (tgUser: any) => {
       setLoggingIn(true);
       try {
@@ -36,7 +39,6 @@ const LoginPage = () => {
 
         const { session } = res.data;
 
-        // Set session in Supabase client
         await supabase.auth.setSession({
           access_token: session.access_token,
           refresh_token: session.refresh_token,
@@ -56,7 +58,6 @@ const LoginPage = () => {
       }
     };
 
-    // Load Telegram Widget script
     if (widgetRef.current && !widgetRef.current.querySelector("script")) {
       const script = document.createElement("script");
       script.src = "https://telegram.org/js/telegram-widget.js?22";
@@ -73,6 +74,28 @@ const LoginPage = () => {
       delete (window as any).onTelegramAuth;
     };
   }, []);
+
+  const handleAdminLogin = async () => {
+    if (!adminEmail || !adminPassword) return;
+    setLoggingIn(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: adminEmail,
+        password: adminPassword,
+      });
+      if (error) throw error;
+      toast({ title: "تم تسجيل دخول الأدمن بنجاح! ✅" });
+      navigate("/dashboard");
+    } catch (err: any) {
+      toast({
+        title: "خطأ في تسجيل الدخول",
+        description: err.message || "بيانات غير صحيحة",
+        variant: "destructive",
+      });
+    } finally {
+      setLoggingIn(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -109,6 +132,39 @@ const LoginPage = () => {
               <div ref={widgetRef} className="flex justify-center" />
               
               <div className="w-full border-t border-border" />
+
+              {!showAdmin ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAdmin(true)}
+                  className="text-xs text-muted-foreground hover:text-primary gap-1"
+                >
+                  <ShieldCheck className="w-3 h-3" />
+                  دخول الأدمن
+                </Button>
+              ) : (
+                <div className="w-full space-y-3">
+                  <Input
+                    type="email"
+                    placeholder="البريد الإلكتروني"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    dir="ltr"
+                  />
+                  <Input
+                    type="password"
+                    placeholder="كلمة المرور"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    dir="ltr"
+                  />
+                  <Button onClick={handleAdminLogin} className="w-full glow-purple">
+                    <ShieldCheck className="w-4 h-4 ml-2" />
+                    تسجيل دخول الأدمن
+                  </Button>
+                </div>
+              )}
               
               <p className="text-xs text-muted-foreground text-center">
                 اضغط على زر Telegram أعلاه لتسجيل الدخول.
