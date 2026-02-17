@@ -122,7 +122,7 @@ serve(async (req) => {
     }
 
     // Send success message
-    const siteUrl = Deno.env.get("SITE_URL") || "https://darkcybercloud.netlify.app";
+    const siteUrl = Deno.env.get("SITE_URL") || "https://darkcyber-cloud-vault.darkcybercloud.workers.dev";
     await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
