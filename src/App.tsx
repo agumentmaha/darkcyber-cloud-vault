@@ -19,6 +19,7 @@ import AdminStats from "./pages/admin/AdminStats";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminFiles from "./pages/admin/AdminFiles";
 import AdminAds from "./pages/admin/AdminAds";
+import MonetagAdManager from "./components/MonetagAdManager";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <MonetagAdManager />
       <BrowserRouter>
         <AuthProvider>
           <Routes>
@@ -34,7 +36,7 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/d/:slug" element={<DownloadPage />} />
-            
+
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <DashboardLayout />
