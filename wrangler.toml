@@ -2,8 +2,10 @@
 
 # This file is used to configure deployment to Cloudflare Pages.
 
+[build]
 # The build command that will be executed during deployment.
-build = "npm run build"
+command = "npm run build"
 
+[assets]
 # The directory where the build output will be located.
-output_dir = "dist"
+directory = "./dist"
