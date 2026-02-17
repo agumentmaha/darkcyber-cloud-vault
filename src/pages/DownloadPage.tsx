@@ -163,6 +163,7 @@ const DownloadPage = () => {
                     <Shield className="w-3 h-3" />
                     <span>تحميل آمن عبر Telegram CDN</span>
                   </div>
+                </div>
               </CardContent>
             </Card>
           ) : null}
