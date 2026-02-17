@@ -123,48 +123,46 @@ const DownloadPage = () => {
 
                 <div className="space-y-3">
                   {file.size > 20 * 1024 * 1024 ? (
-                    <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-4 text-destructive text-sm flex items-start gap-3 text-right" dir="rtl">
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-4 text-amber-500 text-sm flex items-start gap-3 text-right" dir="rtl">
                       <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-                      <p>هذا الملف حجمه كبير جداً ({formatSize(file.size)}). التحميل المباشر معطل لتجاوز الحد المسموح به. يرجى استخدام بوت التيليجرام لاستلام الملف بأمان.</p>
+                      <p>هذا الملف حجمه كبير ({formatSize(file.size)}). التحميل المباشر قد لا ينجح أحياناً بسبب قيود تقنية. ننصح باستخدام بوت التيليجرام لضمان استلام الملف.</p>
                     </div>
                   ) : null}
 
-                  <Button
-                    size="lg"
-                    onClick={handleDownload}
-                    disabled={downloading || file.size > 20 * 1024 * 1024}
-                    className={cn(
-                      "w-full text-lg py-6 font-cyber",
-                      file.size > 20 * 1024 * 1024 ? "bg-muted text-muted-foreground cursor-not-allowed border-none shadow-none" : "glow-purple"
-                    )}
-                  >
-                    {downloading ? (
-                      <><Loader2 className="w-5 h-5 ml-2 animate-spin" /> جارٍ التحضير...</>
-                    ) : (
-                      <><Download className="w-5 h-5 ml-2" /> {file.size > 20 * 1024 * 1024 ? "التحميل المباشر معطل" : "تحميل مباشر (20MB كحد أقصى)"}</>
-                    )}
-                  </Button>
-
-                  <a
-                    href={`https://t.me/T7meelExpressBot?start=${file.unique_slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block"
-                  >
+                  <div className="grid gap-4">
                     <Button
                       size="lg"
-                      variant="outline"
-                      className="w-full text-lg py-6 border-primary/50 hover:bg-primary/10 font-cyber"
+                      onClick={handleDownload}
+                      disabled={downloading}
+                      className="w-full text-lg py-6 glow-purple font-cyber"
                     >
-                      <Cloud className="w-5 h-5 ml-2" /> استلام عبر تيليجرام (حتى 2GB)
+                      {downloading ? (
+                        <><Loader2 className="w-5 h-5 ml-2 animate-spin" /> جارٍ التحضير...</>
+                      ) : (
+                        <><Download className="w-5 h-5 ml-2" /> تحميل مباشر (20MB كحد أقصى)</>
+                      )}
                     </Button>
-                  </a>
-                </div>
 
-                <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
-                  <Shield className="w-3 h-3" />
-                  <span>تحميل آمن عبر Telegram CDN</span>
-                </div>
+                    <a
+                      href={`https://t.me/T7meelExpressBot?start=${file.unique_slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block"
+                    >
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        className="w-full text-lg py-6 border-primary/50 hover:bg-primary/10 font-cyber"
+                      >
+                        <Cloud className="w-5 h-5 ml-2" /> استلام عبر تيليجرام (حتى 2GB)
+                      </Button>
+                    </a>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
+                    <Shield className="w-3 h-3" />
+                    <span>تحميل آمن عبر Telegram CDN</span>
+                  </div>
               </CardContent>
             </Card>
           ) : null}
