@@ -12,27 +12,25 @@ serve(async (req) => {
     }
 
     try {
-        const supabaseAdmin = createClient(
-            Deno.env.get("SUPABASE_URL")!,
-            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseServiceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole);
 
-        // Get the requester's JWT to verify admin status
-        const authHeader = req.headers.get("Authorization")!;
+        const authHeader = req.headers.get("Authorization");
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: "No authorization header provided" }), {
+                status: 200, // Returning 200 so frontend can read the body easily
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+        }
+
         const token = authHeader.replace("Bearer ", "");
-
-        // Create a client with the requester's token to check their identity and role
-        const supabaseUser = createClient(
-            Deno.env.get("SUPABASE_URL")!,
-            Deno.env.get("SUPABASE_ANON_KEY")!,
-            { global: { headers: { Authorization: authHeader } } }
-        );
-
-        const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+        const supabaseUser = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
+        const { data: { user }, error: userError } = await supabaseUser.auth.getUser(token);
 
         if (userError || !user) {
-            return new Response(JSON.stringify({ error: "Unauthorized" }), {
-                status: 401,
+            return new Response(JSON.stringify({ error: "Authorization failed", details: userError }), {
+                status: 200,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
         }
@@ -46,8 +44,8 @@ serve(async (req) => {
             .maybeSingle();
 
         if (roleError || !roleData) {
-            return new Response(JSON.stringify({ error: "Access denied. Admin only." }), {
-                status: 403,
+            return new Response(JSON.stringify({ error: "Access denied. You are not an admin." }), {
+                status: 200,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
         }
@@ -55,38 +53,36 @@ serve(async (req) => {
         const { targetUserId } = await req.json();
 
         if (!targetUserId) {
-            return new Response(JSON.stringify({ error: "Missing targetUserId" }), {
-                status: 400,
+            return new Response(JSON.stringify({ error: "Missing targetUserId in request body" }), {
+                status: 200,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
         }
 
-        // Prevent deleting self
         if (targetUserId === user.id) {
             return new Response(JSON.stringify({ error: "Cannot delete yourself" }), {
-                status: 400,
+                status: 200,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
         }
 
-        // Perform deletion using Admin API
+        // Attempt deletion
         const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
 
         if (deleteError) {
-            console.error("Delete user error:", deleteError);
-            return new Response(JSON.stringify({ error: deleteError.message }), {
-                status: 500,
+            return new Response(JSON.stringify({ error: "Supabase Admin deletion failed", details: deleteError.message }), {
+                status: 200,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
         }
 
-        return new Response(JSON.stringify({ message: "User deleted successfully" }), {
+        return new Response(JSON.stringify({ success: true, message: "User deleted successfully" }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
 
     } catch (err) {
-        return new Response(JSON.stringify({ error: "Internal error" }), {
-            status: 500,
+        return new Response(JSON.stringify({ error: "Unexpected function error", details: err.message }), {
+            status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
     }

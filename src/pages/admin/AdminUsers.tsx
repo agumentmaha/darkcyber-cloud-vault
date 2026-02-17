@@ -54,7 +54,9 @@ const AdminUsers = () => {
     });
 
     if (error) {
-      toast({ title: "خطأ في الحذف", description: error.message, variant: "destructive" });
+      toast({ title: "خطأ في الاتصال", description: error.message, variant: "destructive" });
+    } else if (data?.error) {
+      toast({ title: "خطأ في الحذف", description: data.error + (data.details ? `: ${data.details}` : ""), variant: "destructive" });
     } else {
       toast({ title: "تم حذف المستخدم وجميع بياناته" });
       fetchUsers();
