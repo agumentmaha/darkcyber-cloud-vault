@@ -1,4 +1,6 @@
 # Cloudflare Pages Configuration
+name = "darkcyber-cloud-vault"
+compatibility_date = "2026-02-17"
 
 # This file is used to configure deployment to Cloudflare Pages.
 
