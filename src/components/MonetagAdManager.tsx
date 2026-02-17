@@ -1,7 +1,16 @@
 import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 const MonetagAdManager = () => {
+    const location = useLocation();
+
     useEffect(() => {
+        // Skip if in admin panel
+        if (location.pathname.startsWith('/admin')) {
+            console.log("Admin panel detected, skipping Monetag initialization.");
+            return;
+        }
+
         // Initialize In-App Interstitial
         // Checking if the SDK function exists before calling
         const initAds = () => {

@@ -8,24 +8,18 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 async function verify() {
     console.log("Testing public access to 'files' table...");
 
-    // Check specific file details
+    // List all files
     const { data, error } = await supabase
         .from('files')
-        .select('filename, unique_slug, is_blocked, size, telegram_file_id')
-        .eq('unique_slug', '08f9787ae5fc')
-        .single();
+        .select('filename, unique_slug, is_blocked, size');
 
     if (error) {
-        console.error("❌ Error fetching file:", error.message);
+        console.error("❌ Error fetching files:", error.message);
     } else {
-        console.log("File Details:");
-        console.log(`- Filename: ${data.filename}`);
-        console.log(`- Size: ${data.size} bytes (${(data.size / 1024 / 1024).toFixed(2)} MB)`);
-        console.log(`- Telegram ID: ${data.telegram_file_id}`);
-
-        if (data.size > 20 * 1024 * 1024) {
-            console.warn("⚠️ WARNING: File is larger than 20MB. Telegram Bot API 'getFile' method typically fails for files > 20MB!");
-        }
+        console.log("All Files in DB:");
+        data.forEach(f => {
+            console.log(`- ${f.filename} | Slug: ${f.unique_slug} | ${f.is_blocked ? "BLOCKED" : "Active"}`);
+        });
     }
 }
 

@@ -37,7 +37,7 @@ serve(async (req) => {
 
       if (parts.length > 1) {
         const slug = parts[1];
-        console.log(`Deep link detected for slug: ${slug}`);
+        console.log(`Deep link detected for slug: '${slug}'`);
 
         // Fetch file record
         const { data: file, error: fileError } = await supabase
@@ -46,18 +46,35 @@ serve(async (req) => {
           .eq("unique_slug", slug)
           .maybeSingle();
 
-        if (fileError || !file) {
+        if (fileError) {
+          console.error("Database query error:", fileError);
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               chat_id: chatId,
-              text: "❌ عذراً، الملف غير موجود أو تم حذفه.",
+              text: `❌ خطأ في قاعدة البيانات: ${fileError.message}`,
+            }),
+          });
+        } else if (!file) {
+          console.log(`No file found for slug: '${slug}'`);
+
+          // Debug: List some slugs to see what the bot sees
+          const { data: allFiles } = await supabase.from("files").select("unique_slug").limit(5);
+          const availableSlugs = allFiles?.map(f => f.unique_slug).join(", ") || "none";
+
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: `❌ عذراً، الملف غير موجود.\nSlug search: ${slug}\nAvailable in DB: ${availableSlugs}`,
             }),
           });
         } else {
+          console.log(`File found: ${file.filename}`);
           // Send the file directly
-          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+          const sendResp = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -67,6 +84,18 @@ serve(async (req) => {
               parse_mode: "HTML",
             }),
           });
+          const sendData = await sendResp.json();
+          if (!sendData.ok) {
+            console.error("Telegram sendDocument error:", sendData);
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: `❌ فشل إرسال الملف عبر تيليجرام: ${sendData.description}`,
+              }),
+            });
+          }
         }
       } else {
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {

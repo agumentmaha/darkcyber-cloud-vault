@@ -1,8 +1,17 @@
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useLocation } from "react-router-dom";
 
 const HeadAdInjector = () => {
+    const location = useLocation();
+
     useEffect(() => {
+        // Skip if in admin panel
+        if (location.pathname.startsWith('/admin')) {
+            console.log("Admin panel detected, skipping head ad injection.");
+            return;
+        }
+
         const injectAds = async () => {
             const { data: ads } = await supabase
                 .from("ads")
