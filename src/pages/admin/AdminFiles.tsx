@@ -18,15 +18,30 @@ const AdminFiles = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("files")
-      .select("*, profiles(username)")
+      .select("*")
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching files:", error);
       toast({ title: "خطأ في جلب الملفات", description: error.message, variant: "destructive" });
-    } else {
-      setFiles(data || []);
+      setLoading(false);
+      return;
     }
+
+    // Fetch usernames for file owners
+    const userIds = [...new Set((data || []).map(f => f.user_id))];
+    let profilesMap: Record<string, string> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", userIds);
+      if (profiles) {
+        profilesMap = Object.fromEntries(profiles.map(p => [p.id, p.username || "—"]));
+      }
+    }
+
+    setFiles((data || []).map(f => ({ ...f, _username: profilesMap[f.user_id] || "—" })));
     setLoading(false);
   };
 
@@ -104,7 +119,7 @@ const AdminFiles = () => {
                   {filtered.map((file) => (
                     <TableRow key={file.id}>
                       <TableCell className="max-w-[200px] truncate">{file.filename}</TableCell>
-                      <TableCell>{(file as any).profiles?.username || "—"}</TableCell>
+                      <TableCell>{file._username}</TableCell>
                       <TableCell>{formatSize(file.size)}</TableCell>
                       <TableCell>{new Date(file.created_at).toLocaleDateString("ar")}</TableCell>
                       <TableCell>
