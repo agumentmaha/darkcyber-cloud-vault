@@ -16,11 +16,17 @@ const AdminFiles = () => {
 
   const fetchFiles = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("files")
       .select("*, profiles(username)")
       .order("created_at", { ascending: false });
-    setFiles(data || []);
+
+    if (error) {
+      console.error("Error fetching files:", error);
+      toast({ title: "خطأ في جلب الملفات", description: error.message, variant: "destructive" });
+    } else {
+      setFiles(data || []);
+    }
     setLoading(false);
   };
 

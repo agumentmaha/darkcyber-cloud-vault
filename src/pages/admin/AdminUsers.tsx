@@ -16,11 +16,17 @@ const AdminUsers = () => {
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .order("created_at", { ascending: false });
-    setUsers(data || []);
+
+    if (error) {
+      console.error("Error fetching users:", error);
+      toast({ title: "خطأ في جلب المستخدمين", description: error.message, variant: "destructive" });
+    } else {
+      setUsers(data || []);
+    }
     setLoading(false);
   };
 

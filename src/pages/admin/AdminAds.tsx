@@ -23,8 +23,14 @@ const AdminAds = () => {
 
   const fetchAds = async () => {
     setLoading(true);
-    const { data } = await supabase.from("ads").select("*").order("created_at", { ascending: false });
-    setAds(data || []);
+    const { data, error } = await supabase.from("ads").select("*").order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching ads:", error);
+      toast({ title: "خطأ في جلب الإعلانات", description: error.message, variant: "destructive" });
+    } else {
+      setAds(data || []);
+    }
     setLoading(false);
   };
 
