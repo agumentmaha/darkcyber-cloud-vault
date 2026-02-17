@@ -157,7 +157,14 @@ const LandingPage = () => {
 
       {/* Ads */}
       <section className="py-6 px-4">
-        <div className="container mx-auto max-w-3xl">
+        <div className="container mx-auto max-w-3xl space-y-4">
+          <div id="frame" style={{ width: '100%', margin: 'auto', position: 'relative', zIndex: 99998 }}>
+            <iframe
+              data-aa='2427762'
+              src='//acceptable.a-ads.com/2427762/?size=Adaptive'
+              style={{ border: 0, padding: 0, width: '70%', height: 'auto', overflow: 'hidden', display: 'block', margin: 'auto' }}
+            ></iframe>
+          </div>
           <AdBanner placement="dashboard" />
         </div>
       </section>
