@@ -53,27 +53,17 @@ const DownloadPage = () => {
     if (!slug) return;
     setDownloading(true);
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("get-download-link", {
-        body: null,
-        headers: {},
-      });
+      // The function now streams the file directly via MTKruto.
+      // We navigate to the function URL with the apikey in query params to bypass Telegram Bot API's 20MB limit.
+      const downloadUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-download-link?slug=${slug}&apikey=${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`;
 
-      // Use query params approach
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-download-link?slug=${slug}`,
-        { headers: { "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
-      );
-      const result = await res.json();
-
-      if (result.url) {
-        window.open(result.url, "_blank");
-      } else {
-        setError(result.error || "فشل في الحصول على رابط التحميل");
-      }
+      // Trigger download by opening the URL
+      window.location.href = downloadUrl;
     } catch (err) {
       setError("حدث خطأ أثناء التحميل");
     } finally {
-      setDownloading(false);
+      // We set a timeout here because location changes don't usually capture the 'finish' of a binary stream start
+      setTimeout(() => setDownloading(false), 3000);
     }
   };
 

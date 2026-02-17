@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Client } from "https://deno.land/x/mtkruto@0.8.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,11 +14,11 @@ serve(async (req) => {
 
   try {
     const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    if (!BOT_TOKEN) {
-      return new Response(JSON.stringify({ error: "Bot token not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const API_ID = Number(Deno.env.get("TELEGRAM_API_ID"));
+    const API_HASH = Deno.env.get("TELEGRAM_API_HASH");
+
+    if (!BOT_TOKEN || !API_ID || !API_HASH) {
+      throw new Error("Telegram credentials not configured");
     }
 
     const url = new URL(req.url);
@@ -50,32 +51,55 @@ serve(async (req) => {
       });
     }
 
-    // Get file path from Telegram
-    const fileResp = await fetch(
-      `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${file.telegram_file_id}`
-    );
-    const fileData = await fileResp.json();
+    console.log(`Starting MTKruto stream for: ${file.filename} (${file.size} bytes)`);
 
-    if (!fileData.ok || !fileData.result?.file_path) {
-      return new Response(JSON.stringify({ error: "File expired or unavailable" }), {
-        status: 410,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const downloadUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileData.result.file_path}`;
-
-    return new Response(JSON.stringify({
-      url: downloadUrl,
-      filename: file.filename,
-      size: file.size,
-      mime_type: file.mime_type,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Initialize MTKruto Client
+    const client = new Client({
+      apiId: API_ID,
+      apiHash: API_HASH,
     });
+
+    await client.start(BOT_TOKEN);
+
+    // Get the file iterator
+    const chunks = client.downloadFile(file.telegram_file_id);
+
+    // Transform AsyncIterable to ReadableStream
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of chunks) {
+            controller.enqueue(chunk);
+          }
+          controller.close();
+        } catch (e) {
+          console.error("Stream error:", e);
+          controller.error(e);
+        } finally {
+          try {
+            await client.signOut();
+          } catch (e) {
+            // Ignore signout errors on cleanup
+          }
+        }
+      },
+      cancel() {
+        console.log("Stream cancelled by user");
+      }
+    });
+
+    return new Response(readable, {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": file.mime_type || "application/octet-stream",
+        "Content-Disposition": `attachment; filename="${encodeURIComponent(file.filename)}"`,
+        "Content-Length": file.size.toString(),
+      },
+    });
+
   } catch (err) {
     console.error("Download error:", err);
-    return new Response(JSON.stringify({ error: "Internal error" }), {
+    return new Response(JSON.stringify({ error: err.message || "Internal error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
