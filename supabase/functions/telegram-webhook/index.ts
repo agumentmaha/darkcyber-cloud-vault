@@ -30,17 +30,56 @@ serve(async (req) => {
     const update = await req.json();
 
     // Handle /start command
-    if (update.message?.text === "/start") {
+    const text = update.message?.text || "";
+    if (text.startsWith("/start")) {
       const chatId = update.message.chat.id;
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: "مرحباً بك في DarkCyberX Cloud! ☁️\n\nأرسل لي أي ملف وسأعطيك رابط تحميل مباشر.\n\n📏 الحد الأقصى: 2GB\n\n🤖 @T7meelExpressBot",
-          parse_mode: "HTML",
-        }),
-      });
+      const parts = text.split(" ");
+
+      if (parts.length > 1) {
+        const slug = parts[1];
+        console.log(`Deep link detected for slug: ${slug}`);
+
+        // Fetch file record
+        const { data: file, error: fileError } = await supabase
+          .from("files")
+          .select("*")
+          .eq("unique_slug", slug)
+          .maybeSingle();
+
+        if (fileError || !file) {
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: "❌ عذراً، الملف غير موجود أو تم حذفه.",
+            }),
+          });
+        } else {
+          // Send the file directly
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              document: file.telegram_file_id,
+              caption: `📄 <b>${file.filename}</b>\n📏 ${(file.size / 1048576).toFixed(2)} MB\n\nتم الإرسال من DarkCyberX Cloud ☁️`,
+              parse_mode: "HTML",
+            }),
+          });
+        }
+      } else {
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: "مرحباً بك في DarkCyberX Cloud! ☁️\n\nأرسل لي أي ملف وسأعطيك رابط تحميل مباشر.\n\n📏 الحد الأقصى: 2GB\n\n🤖 @T7meelExpressBot",
+            parse_mode: "HTML",
+          }),
+        });
+      }
+
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
