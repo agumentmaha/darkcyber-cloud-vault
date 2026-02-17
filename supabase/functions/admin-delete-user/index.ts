@@ -81,7 +81,7 @@ serve(async (req) => {
         });
 
     } catch (err) {
-        return new Response(JSON.stringify({ error: "Unexpected function error", details: err.message }), {
+        return new Response(JSON.stringify({ error: "Unexpected function error", details: (err as Error).message }), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
