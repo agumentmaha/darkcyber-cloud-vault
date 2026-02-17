@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Search, Trash2, Ban, CheckCircle, Loader2 } from "lucide-react";
+import { Search, Trash2, Ban, CheckCircle, Loader2, ExternalLink, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,6 +43,7 @@ const AdminFiles = () => {
   };
 
   const deleteFile = async (id: string) => {
+    if (!confirm("هل أنت متأكد من حذف هذا الملف؟")) return;
     const { error } = await supabase.from("files").delete().eq("id", id);
     if (error) {
       toast({ title: "خطأ", description: error.message, variant: "destructive" });
@@ -50,6 +51,12 @@ const AdminFiles = () => {
       toast({ title: "تم حذف الملف" });
       fetchFiles();
     }
+  };
+
+  const copyLink = (slug: string) => {
+    const url = `${window.location.origin}/d/${slug}`;
+    navigator.clipboard.writeText(url);
+    toast({ title: "تم نسخ الرابط" });
   };
 
   const formatSize = (bytes: number) => {
@@ -88,6 +95,7 @@ const AdminFiles = () => {
                     <TableHead className="text-right">المستخدم</TableHead>
                     <TableHead className="text-right">الحجم</TableHead>
                     <TableHead className="text-right">التاريخ</TableHead>
+                    <TableHead className="text-right">الرابط</TableHead>
                     <TableHead className="text-right">الحالة</TableHead>
                     <TableHead className="text-right">إجراءات</TableHead>
                   </TableRow>
@@ -99,6 +107,18 @@ const AdminFiles = () => {
                       <TableCell>{(file as any).profiles?.username || "—"}</TableCell>
                       <TableCell>{formatSize(file.size)}</TableCell>
                       <TableCell>{new Date(file.created_at).toLocaleDateString("ar")}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyLink(file.unique_slug)}>
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                          <a href={`/d/${file.unique_slug}`} target="_blank" rel="noopener noreferrer">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <ExternalLink className="h-3 w-3" />
+                            </Button>
+                          </a>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge variant={file.is_blocked ? "destructive" : "default"}>
                           {file.is_blocked ? "محظور" : "نشط"}

@@ -90,7 +90,9 @@ const AdminAds = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="banner">Banner</SelectItem>
+                    <SelectItem value="banner">Banner / Iframe</SelectItem>
+                    <SelectItem value="script">Script / SDK</SelectItem>
+                    <SelectItem value="meta">Meta Tag</SelectItem>
                     <SelectItem value="adsense">Google AdSense</SelectItem>
                   </SelectContent>
                 </Select>
@@ -104,7 +106,8 @@ const AdminAds = () => {
                   <SelectContent>
                     <SelectItem value="download_page">صفحة التحميل</SelectItem>
                     <SelectItem value="dashboard">لوحة المستخدم</SelectItem>
-                    <SelectItem value="both">كلاهما</SelectItem>
+                    <SelectItem value="global_head">الرأس (Global Head)</SelectItem>
+                    <SelectItem value="both">كلاهما (صفحة التحميل واللوحة)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -141,9 +144,15 @@ const AdminAds = () => {
                 <TableBody>
                   {ads.map((ad) => (
                     <TableRow key={ad.id}>
-                      <TableCell>{ad.ad_type === "adsense" ? "AdSense" : "Banner"}</TableCell>
                       <TableCell>
-                        {ad.placement === "download_page" ? "صفحة التحميل" : ad.placement === "dashboard" ? "لوحة المستخدم" : "الكل"}
+                        <Badge variant="outline">
+                          {ad.ad_type === "script" ? "Script" : ad.ad_type === "meta" ? "Meta" : ad.ad_type === "adsense" ? "AdSense" : "Banner"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {ad.placement === "download_page" ? "صفحة التحميل" :
+                          ad.placement === "dashboard" ? "لوحة المستخدم" :
+                            ad.placement === "global_head" ? "Global Head" : "الكل"}
                       </TableCell>
                       <TableCell>
                         <Badge variant={ad.status === "active" ? "default" : "secondary"}>

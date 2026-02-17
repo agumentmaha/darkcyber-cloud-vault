@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Search, Ban, CheckCircle, Loader2 } from "lucide-react";
+import { Search, Ban, CheckCircle, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,6 +43,23 @@ const AdminUsers = () => {
       toast({ title: currentBan ? "تم إلغاء الحظر" : "تم حظر المستخدم" });
       fetchUsers();
     }
+  };
+
+  const deleteUser = async (userId: string, username: string) => {
+    if (!confirm(`هل أنت متأكد من حذف المستخدم "${username}" نهائياً؟ سيتم حذف جميع ملفاته أيضاً.`)) return;
+
+    setLoading(true);
+    const { data, error } = await supabase.functions.invoke("admin-delete-user", {
+      body: { targetUserId: userId },
+    });
+
+    if (error) {
+      toast({ title: "خطأ في الحذف", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "تم حذف المستخدم وجميع بياناته" });
+      fetchUsers();
+    }
+    setLoading(false);
   };
 
   const filtered = users.filter((u) =>
@@ -95,9 +112,14 @@ const AdminUsers = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => toggleBan(user.id, user.is_banned)}>
-                          {user.is_banned ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Ban className="w-4 h-4 text-destructive" />}
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => toggleBan(user.id, user.is_banned)}>
+                            {user.is_banned ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Ban className="w-4 h-4 text-destructive" />}
+                          </Button>
+                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => deleteUser(user.id, user.username)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -78,19 +78,26 @@ serve(async (req) => {
     }
 
     // Find user by telegram_id
-    const { data: profile } = await supabase
+    console.log(`Searching for profile with telegram_id: ${chatId}`);
+    const { data: profile, error: searchError } = await supabase
       .from("profiles")
       .select("id")
       .eq("telegram_id", chatId)
-      .single();
+      .maybeSingle();
+
+    if (searchError) {
+      console.error("Profile search error:", searchError);
+    }
 
     if (!profile) {
+      console.log(`Profile not found for chatId: ${chatId}`);
       await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: chatId,
-          text: "❌ يجب تسجيل الدخول في الموقع أولاً.",
+          text: `❌ يجب تسجيل الدخول في الموقع أولاً.\n\nالـ ID الخاص بك هو: <code>${chatId}</code>\nيرجى التأكد من ربطه بحسابك في الموقع.`,
+          parse_mode: "HTML",
         }),
       });
       return new Response(JSON.stringify({ ok: true }), {
