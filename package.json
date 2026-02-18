@@ -1,9 +1,7 @@
 {
-  "name": "vite_react_shadcn_ts",
-  "author": "Mohamed Eissa",
+  "name": "darkcyber-cloud-vault",
   "private": true,
-  "version": "0.0.2",
-  "deploy_trigger": "4",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
