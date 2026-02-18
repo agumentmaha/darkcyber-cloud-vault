@@ -1,0 +1,2 @@
+# Force overwrite with safe rule
+/force-refresh-config /index.html 200
