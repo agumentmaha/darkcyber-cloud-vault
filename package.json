@@ -1,9 +1,9 @@
 {
   "name": "darkcyber-cloud-vault",
   "private": true,
-  "version": "0.2.2",
+  "version": "0.3.0",
   "type": "module",
-  "deploy_trigger": "12",
+  "deploy_trigger": "20",
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/copy-404.js",

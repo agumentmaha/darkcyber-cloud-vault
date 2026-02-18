@@ -4,7 +4,7 @@ compatibility_date = "2026-02-17"
 main = "index.ts"
 
 [assets]
-directory = "./dist"
+directory = "./build-output"
 binding = "ASSETS"
 not_found_handling = "none" # Handled by our index.ts fallback
 
