@@ -1,5 +1,5 @@
 # Cloudflare Pages Configuration
-name = "darkcyber-cloud-vault-web"
+name = "darkcyber-cloud-vault"
 compatibility_date = "2026-02-17"
 main = "index.ts"
 
