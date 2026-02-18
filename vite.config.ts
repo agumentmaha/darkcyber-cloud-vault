@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   build: {
-    outDir: "out",
+    outDir: "dist",
     emptyOutDir: true,
   },
   resolve: {
