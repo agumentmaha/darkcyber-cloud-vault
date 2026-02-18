@@ -1,1 +1,6 @@
-/* / 200
+# SPA Routes - specific redirects to avoid root loop
+/login /index.html 200
+/terms /index.html 200
+/d/* /index.html 200
+/dashboard/* /index.html 200
+/admin/* /index.html 200
