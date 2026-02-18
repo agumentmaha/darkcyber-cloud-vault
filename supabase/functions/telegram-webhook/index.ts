@@ -197,7 +197,7 @@ serve(async (req) => {
     }
 
     // Send success message
-    const siteUrl = Deno.env.get("SITE_URL") || "https://darkcyber-cloud-vault.darkcybercloud.workers.dev";
+    const siteUrl = Deno.env.get("SITE_URL") || "";
     await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
