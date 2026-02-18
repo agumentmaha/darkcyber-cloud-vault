@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const distDir = path.join(__dirname, '../build-output');
+const distDir = path.join(__dirname, '../dist');
 const indexHtml = path.join(distDir, 'index.html');
 const notFoundHtml = path.join(distDir, '404.html');
 
@@ -16,16 +16,16 @@ if (fs.existsSync(distDir) && fs.existsSync(indexHtml)) {
     fs.copyFileSync(indexHtml, notFoundHtml);
     console.log('Successfully created 404.html for SPA fallback.');
 
-    // Nuclear cleanup: Ensure NO _redirects or _headers exist in build-output
+    // Nuclear cleanup: Ensure NO _redirects or _headers exist in dist
     // that might trigger Cloudflare's loop validator
     ['_redirects', '_headers'].forEach(file => {
         const fullPath = path.join(distDir, file);
         if (fs.existsSync(fullPath)) {
-            console.log(`Deleting ghost file from build-output: ${file}`);
+            console.log(`Deleting ghost file from dist: ${file}`);
             fs.unlinkSync(fullPath);
         }
     });
 } else {
-    console.error('Error: build-output/index.html not found. Build might have failed.');
+    console.error('Error: dist/index.html not found. Build might have failed.');
     process.exit(1);
 }
