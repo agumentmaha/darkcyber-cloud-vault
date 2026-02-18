@@ -60,40 +60,45 @@ serve(async (req) => {
     const photoUrl = telegramData.photo_url || "";
 
     // Synthetic email for this Telegram user
+    // Synthetic account for Telegram user
     const email = `tg_${telegramId}@darkcyberx.app`;
     const password = `tg_${BOT_TOKEN}_${telegramId}`;
+
+    console.log(`Authenticating user: ${username} (ID: ${telegramId})`);
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Try to sign in first
     const supabaseAnon = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!
     );
 
     let session = null;
+    let userId = null;
 
+    console.log("Attempting sign in with synthetic email...");
     const { data: signInData, error: signInError } = await supabaseAnon.auth.signInWithPassword({
       email,
       password,
     });
 
     if (signInData?.session) {
+      console.log("Existing user found, session grabbed.");
       session = signInData.session;
+      userId = signInData.user.id;
 
-      // Update profile with latest Telegram info
       await supabaseAdmin.from("profiles").update({
         telegram_id: telegramId,
         first_name: firstName,
         last_name: lastName,
         username,
         avatar_url: photoUrl,
-      }).eq("id", signInData.user.id);
+      }).eq("id", userId);
     } else {
-      // Create new user
+      console.log("New user detected, creating via admin...");
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
@@ -108,37 +113,37 @@ serve(async (req) => {
       });
 
       if (createError) {
-        console.error("Create user error:", createError);
-        return new Response(JSON.stringify({ error: "Failed to create user" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        console.error("Admin user creation failed:", createError);
+        throw createError;
       }
 
-      // Update profile with Telegram data
+      userId = newUser.user.id;
+      console.log(`User created: ${userId}. Linking profile...`);
+
       await supabaseAdmin.from("profiles").update({
         telegram_id: telegramId,
         first_name: firstName,
         last_name: lastName,
         username,
         avatar_url: photoUrl,
-      }).eq("id", newUser.user.id);
+      }).eq("id", userId);
 
-      // Sign in the new user
-      const { data: newSignIn } = await supabaseAnon.auth.signInWithPassword({
+      console.log("Signing in new user...");
+      const { data: newSignIn, error: newSignInError } = await supabaseAnon.auth.signInWithPassword({
         email,
         password,
       });
 
+      if (newSignInError) {
+        console.error("Post-creation sign-in failed:", newSignInError);
+        throw newSignInError;
+      }
       session = newSignIn?.session;
     }
 
-    if (!session) {
-      return new Response(JSON.stringify({ error: "Failed to create session" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!session) throw new Error("Could not establish auth session");
+
+    console.log("Auth successful. Returning session data.");
 
     return new Response(JSON.stringify({
       session: {

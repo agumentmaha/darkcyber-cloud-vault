@@ -27,27 +27,40 @@ const LoginPage = () => {
 
   useEffect(() => {
     (window as any).onTelegramAuth = async (tgUser: any) => {
+      console.log("Telegram auth data received:", tgUser);
       setLoggingIn(true);
       try {
-        const res = await supabase.functions.invoke("telegram-auth", {
+        console.log("Invoking telegram-auth edge function...");
+        const { data, error: invokeError } = await supabase.functions.invoke("telegram-auth", {
           body: tgUser,
         });
 
-        if (res.error) {
-          throw new Error(res.error.message);
+        if (invokeError) {
+          console.error("Function invocation error:", invokeError);
+          throw new Error(invokeError.message || "Failed to call auth function");
         }
 
-        const { session } = res.data;
+        if (!data || !data.session) {
+          console.error("Auth function returned no session:", data);
+          throw new Error("لم يتم استلام جلسة صالحة من السيرفر.");
+        }
 
-        await supabase.auth.setSession({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
+        console.log("Session received. Setting session in Supabase...");
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
         });
 
+        if (sessionError) {
+          console.error("setSession error:", sessionError);
+          throw sessionError;
+        }
+
+        console.log("Session set successfully! Navigating to dashboard...");
         toast({ title: "تم تسجيل الدخول بنجاح! ✅" });
         navigate("/dashboard");
       } catch (err: any) {
-        console.error("Login error:", err);
+        console.error("Complete Login Flow Error:", err);
         toast({
           title: "خطأ في تسجيل الدخول",
           description: err.message || "حدث خطأ غير متوقع",
