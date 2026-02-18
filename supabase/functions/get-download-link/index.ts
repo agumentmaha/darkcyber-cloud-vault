@@ -99,6 +99,7 @@ Deno.serve(async (req) => {
     }
 
     // In 0.14.0, download is the standard method
+    console.log(`Initializing chunks for file: ${file.filename}`);
     const chunks = globalClient.download(file.telegram_file_id, {
       offset: BigInt(start),
       limit: contentLength

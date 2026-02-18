@@ -61,10 +61,12 @@ serve(async (req) => {
 
     // Synthetic email for this Telegram user
     // Synthetic account for Telegram user
+    // We use a stable salt here so changing bots doesn't break existing user logins
+    const STABLE_SALT = Deno.env.get("TELEGRAM_API_HASH") || "darkcyber_stable_salt";
     const email = `tg_${telegramId}@darkcyberx.app`;
-    const password = `tg_${BOT_TOKEN}_${telegramId}`;
+    const password = `tg_${STABLE_SALT}_${telegramId}`;
 
-    console.log(`Authenticating user: ${username} (ID: ${telegramId})`);
+    console.log(`Authenticating user: ${username} (ID: ${telegramId}, Email: ${email})`);
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -114,31 +116,70 @@ serve(async (req) => {
 
       if (createError) {
         console.error("Admin user creation failed:", createError);
-        throw createError;
+
+        // RECOVERY LOGIC: If user already exists (likely due to old bot token password), update password
+        if (createError.message?.includes("already registered") || createError.message?.includes("unique constraint")) {
+          console.log("User already exists but sign-in failed. Attempting password recovery/migration...");
+
+          // Find the user's ID via profile
+          const { data: existingProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("id")
+            .eq("telegram_id", telegramId)
+            .maybeSingle();
+
+          if (existingProfile) {
+            console.log(`Found existing profile for recovery: ${existingProfile.id}. Updating password...`);
+            const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+              existingProfile.id,
+              { password: password }
+            );
+
+            if (updateError) {
+              console.error("Failed to update password during recovery:", updateError);
+              throw updateError;
+            }
+
+            console.log("Password updated. Retrying sign-in...");
+            const { data: retrySignIn, error: retryError } = await supabaseAnon.auth.signInWithPassword({
+              email,
+              password,
+            });
+
+            if (retryError) throw retryError;
+            session = retrySignIn?.session;
+          } else {
+            console.error("User exists in Auth but no Profile found. Cannot recover.");
+            throw createError;
+          }
+        } else {
+          throw createError;
+        }
+      } else {
+        // Normal new user creation success
+        userId = newUser.user.id;
+        console.log(`User created: ${userId}. Linking profile...`);
+
+        await supabaseAdmin.from("profiles").update({
+          telegram_id: telegramId,
+          first_name: firstName,
+          last_name: lastName,
+          username,
+          avatar_url: photoUrl,
+        }).eq("id", userId);
+
+        console.log("Signing in new user...");
+        const { data: newSignIn, error: newSignInError } = await supabaseAnon.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (newSignInError) {
+          console.error("Post-creation sign-in failed:", newSignInError);
+          throw newSignInError;
+        }
+        session = newSignIn?.session;
       }
-
-      userId = newUser.user.id;
-      console.log(`User created: ${userId}. Linking profile...`);
-
-      await supabaseAdmin.from("profiles").update({
-        telegram_id: telegramId,
-        first_name: firstName,
-        last_name: lastName,
-        username,
-        avatar_url: photoUrl,
-      }).eq("id", userId);
-
-      console.log("Signing in new user...");
-      const { data: newSignIn, error: newSignInError } = await supabaseAnon.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (newSignInError) {
-        console.error("Post-creation sign-in failed:", newSignInError);
-        throw newSignInError;
-      }
-      session = newSignIn?.session;
     }
 
     if (!session) throw new Error("Could not establish auth session");
