@@ -35,7 +35,7 @@ const UploadPage = () => {
           </div>
 
           <Button size="lg" className="glow-purple font-cyber" asChild>
-            <a href="https://t.me/T7meelExpressBot" target="_blank" rel="noopener noreferrer">
+            <a href="https://t.me/BotTelegramcloudbot" target="_blank" rel="noopener noreferrer">
               <MessageCircle className="w-5 h-5 ml-2" />
               فتح البوت على Telegram
             </a>

@@ -1,13 +1,16 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Client } from "https://deno.land/x/mtkruto@0.8.0/mod.ts";
+import { Client, StorageMemory } from "https://deno.land/x/mtkruto@0.14.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
+// Global cache to avoid repeated logins
+let globalClient: Client | null = null;
+let clientLastStarted = 0;
+
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -41,7 +44,6 @@ serve(async (req) => {
       .from("files")
       .select("*")
       .eq("unique_slug", slug)
-      .eq("is_blocked", false)
       .single();
 
     if (error || !file) {
@@ -51,55 +53,96 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Starting MTKruto stream for: ${file.filename} (${file.size} bytes)`);
+    // --- HYBRID APPROACH ---
+    // For files < 20MB, use official API (no login, no flood wait)
+    if (file.size < 20 * 1024 * 1024) {
+      const fileResp = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${file.telegram_file_id}`);
+      const fileData = await fileResp.json();
+      if (fileData.ok && fileData.result?.file_path) {
+        return new Response(null, {
+          status: 302,
+          headers: {
+            ...corsHeaders,
+            "Location": `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileData.result.file_path}`,
+          }
+        });
+      }
+    }
 
-    // Initialize MTKruto Client
-    const client = new Client({
-      apiId: API_ID,
-      apiHash: API_HASH,
+    // --- MTProto Streaming (for > 20MB) ---
+    // Parse Range header
+    const rangeHeader = req.headers.get("range");
+    let start = 0;
+    let end = file.size - 1;
+    let status = 200;
+
+    if (rangeHeader) {
+      const match = rangeHeader.match(/bytes=(\d+)-(\d+)?/);
+      if (match) {
+        start = parseInt(match[1], 10);
+        if (match[2]) end = parseInt(match[2], 10);
+        status = 206;
+      }
+    }
+
+    const contentLength = end - start + 1;
+
+    // Ensure client is alive and reused
+    if (!globalClient || (Date.now() - clientLastStarted > 300000)) { // Re-init every 5 mins or if null
+      globalClient = new Client({
+        storage: new StorageMemory(),
+        apiId: API_ID,
+        apiHash: API_HASH,
+      });
+      await globalClient.start({ botToken: BOT_TOKEN });
+      clientLastStarted = Date.now();
+    }
+
+    // In 0.14.0, download is the standard method
+    const chunks = globalClient.download(file.telegram_file_id, {
+      offset: BigInt(start),
+      limit: contentLength
     });
 
-    await client.start(BOT_TOKEN);
-
-    // Get the file iterator
-    const chunks = client.downloadFile(file.telegram_file_id);
-
-    // Transform AsyncIterable to ReadableStream
     const readable = new ReadableStream({
       async start(controller) {
         try {
+          let bytesSent = 0;
           for await (const chunk of chunks) {
-            controller.enqueue(chunk);
+            const remaining = contentLength - bytesSent;
+            if (remaining <= 0) break;
+            const toSend = chunk.length > remaining ? chunk.slice(0, remaining) : chunk;
+            controller.enqueue(toSend);
+            bytesSent += toSend.length;
           }
           controller.close();
         } catch (e) {
           console.error("Stream error:", e);
           controller.error(e);
-        } finally {
-          try {
-            await client.signOut();
-          } catch (e) {
-            // Ignore signout errors on cleanup
-          }
         }
-      },
-      cancel() {
-        console.log("Stream cancelled by user");
       }
     });
 
-    return new Response(readable, {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": file.mime_type || "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${encodeURIComponent(file.filename)}"`,
-        "Content-Length": file.size.toString(),
-      },
+    const responseHeaders = new Headers({
+      ...corsHeaders,
+      "Content-Type": file.mime_type || "application/octet-stream",
+      "Content-Disposition": `attachment; filename="${encodeURIComponent(file.filename)}"`,
+      "Accept-Ranges": "bytes",
+      "Content-Length": contentLength.toString(),
+      "ETag": `"${file.unique_slug}-${file.size}"`,
+      "Last-Modified": new Date(file.created_at || Date.now()).toUTCString(),
+      "Cache-Control": "private, max-age=3600",
     });
 
+    if (status === 206) {
+      responseHeaders.set("Content-Range", `bytes ${start}-${end}/${file.size}`);
+    }
+
+    return new Response(readable, { status, headers: responseHeaders });
+
   } catch (err) {
-    console.error("Download error:", err);
-    return new Response(JSON.stringify({ error: err.message || "Internal error" }), {
+    console.error("Catch:", err);
+    return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

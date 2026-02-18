@@ -103,7 +103,7 @@ serve(async (req) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id: chatId,
-            text: "مرحباً بك في DarkCyberX Cloud! ☁️\n\nأرسل لي أي ملف وسأعطيك رابط تحميل مباشر.\n\n📏 الحد الأقصى: 2GB\n\n🤖 @T7meelExpressBot",
+            text: "مرحباً بك في DarkCyberX Cloud! ☁️\n\nأرسل لي أي ملف وسأعطيك رابط تحميل مباشر.\n\n📏 الحد الأقصى: 2GB\n\n🤖 @BotTelegramcloudbot",
             parse_mode: "HTML",
           }),
         });

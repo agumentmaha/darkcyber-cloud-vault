@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
-const BOT_USERNAME = "T7meelExpressBot";
+const BOT_USERNAME = "BotTelegramcloudbot";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -130,7 +130,7 @@ const LoginPage = () => {
           ) : (
             <div className="flex flex-col items-center gap-6">
               <div ref={widgetRef} className="flex justify-center" />
-              
+
               <div className="w-full border-t border-border" />
 
               {!showAdmin ? (
@@ -165,7 +165,7 @@ const LoginPage = () => {
                   </Button>
                 </div>
               )}
-              
+
               <p className="text-xs text-muted-foreground text-center">
                 اضغط على زر Telegram أعلاه لتسجيل الدخول.
                 <br />

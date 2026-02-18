@@ -134,7 +134,7 @@ const DownloadPage = () => {
                     </Button>
 
                     <a
-                      href={`https://t.me/T7meelExpressBot?start=${file.unique_slug}`}
+                      href={`https://t.me/BotTelegramcloudbot?start=${file.unique_slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="block"
