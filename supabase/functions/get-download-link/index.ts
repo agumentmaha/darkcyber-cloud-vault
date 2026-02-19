@@ -46,14 +46,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Only Bot API supported (up to 20MB)
-    if (file.size >= 20 * 1024 * 1024) {
-      return new Response(JSON.stringify({ error: "File too large for direct download. Use Telegram bot instead.", telegram_bot: true }), {
-        status: 413,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const fileResp = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${file.telegram_file_id}`);
     const fileData = await fileResp.json();
     if (fileData.ok && fileData.result?.file_path) {
@@ -66,7 +58,10 @@ Deno.serve(async (req) => {
       });
     }
 
-
+    return new Response(JSON.stringify({ error: "File expired or unavailable" }), {
+      status: 410,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err) {
     console.error("Catch:", err);
     return new Response(JSON.stringify({ error: err.message }), {
