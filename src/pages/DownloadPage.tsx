@@ -112,26 +112,26 @@ const DownloadPage = () => {
                 <p className="text-muted-foreground text-sm mb-8">النوع: {file.mime_type || "غير معروف"}</p>
 
                 <div className="space-y-3">
-                  {file.size > 20 * 1024 * 1024 ? (
-                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-4 text-amber-500 text-sm flex items-start gap-3 text-right" dir="rtl">
-                      <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-                      <p>هذا الملف حجمه كبير ({formatSize(file.size)}). التحميل المباشر قد لا ينجح أحياناً بسبب قيود تقنية. ننصح باستخدام بوت التيليجرام لضمان استلام الملف.</p>
-                    </div>
-                  ) : null}
-
                   <div className="grid gap-4">
-                    <Button
-                      size="lg"
-                      onClick={handleDownload}
-                      disabled={downloading}
-                      className="w-full text-lg py-6 glow-purple font-cyber"
-                    >
-                      {downloading ? (
-                        <><Loader2 className="w-5 h-5 ml-2 animate-spin" /> جارٍ التحضير...</>
-                      ) : (
-                        <><Download className="w-5 h-5 ml-2" /> تحميل مباشر (20MB كحد أقصى)</>
-                      )}
-                    </Button>
+                    {file.size < 20 * 1024 * 1024 ? (
+                      <Button
+                        size="lg"
+                        onClick={handleDownload}
+                        disabled={downloading}
+                        className="w-full text-lg py-6 glow-purple font-cyber"
+                      >
+                        {downloading ? (
+                          <><Loader2 className="w-5 h-5 ml-2 animate-spin" /> جارٍ التحضير...</>
+                        ) : (
+                          <><Download className="w-5 h-5 ml-2" /> تحميل مباشر</>
+                        )}
+                      </Button>
+                    ) : (
+                      <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 text-amber-500 text-sm flex items-start gap-3 text-right" dir="rtl">
+                        <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+                        <p>هذا الملف حجمه كبير ({formatSize(file.size)}). استخدم بوت التيليجرام لتحميله.</p>
+                      </div>
+                    )}
 
                     <a
                       href={`https://t.me/BotTelegramcloudbot?start=${file.unique_slug}`}
@@ -141,10 +141,15 @@ const DownloadPage = () => {
                     >
                       <Button
                         size="lg"
-                        variant="outline"
-                        className="w-full text-lg py-6 border-primary/50 hover:bg-primary/10 font-cyber"
+                        variant={file.size >= 20 * 1024 * 1024 ? "default" : "outline"}
+                        className={cn(
+                          "w-full text-lg py-6 font-cyber",
+                          file.size >= 20 * 1024 * 1024
+                            ? "glow-purple"
+                            : "border-primary/50 hover:bg-primary/10"
+                        )}
                       >
-                        <Cloud className="w-5 h-5 ml-2" /> استلام عبر تيليجرام (حتى 2GB)
+                        <Send className="w-5 h-5 ml-2" /> استلام عبر تيليجرام (حتى 2GB)
                       </Button>
                     </a>
                   </div>
