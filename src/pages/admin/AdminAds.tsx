@@ -19,6 +19,7 @@ const AdminAds = () => {
   const [adType, setAdType] = useState("banner");
   const [placement, setPlacement] = useState("download_page");
   const [code, setCode] = useState("");
+  const [editingAd, setEditingAd] = useState<any>(null);
   const { toast } = useToast();
 
   const fetchAds = async () => {
@@ -36,19 +37,46 @@ const AdminAds = () => {
 
   useEffect(() => { fetchAds(); }, []);
 
-  const createAd = async () => {
+  const openCreate = () => {
+    setEditingAd(null);
+    setAdType("banner");
+    setPlacement("download_page");
+    setCode("");
+    setOpen(true);
+  };
+
+  const openEdit = (ad: any) => {
+    setEditingAd(ad);
+    setAdType(ad.ad_type);
+    setPlacement(ad.placement);
+    setCode(ad.code);
+    setOpen(true);
+  };
+
+  const saveAd = async () => {
     if (!code.trim()) {
       toast({ title: "أدخل كود الإعلان", variant: "destructive" });
       return;
     }
-    const { error } = await supabase.from("ads").insert({ ad_type: adType, placement, code });
-    if (error) {
-      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+    if (editingAd) {
+      const { error } = await supabase.from("ads").update({ ad_type: adType, placement, code }).eq("id", editingAd.id);
+      if (error) {
+        toast({ title: "خطأ", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "تم تعديل الإعلان" });
+        setOpen(false);
+        fetchAds();
+      }
     } else {
-      toast({ title: "تم إضافة الإعلان" });
-      setOpen(false);
-      setCode("");
-      fetchAds();
+      const { error } = await supabase.from("ads").insert({ ad_type: adType, placement, code });
+      if (error) {
+        toast({ title: "خطأ", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "تم إضافة الإعلان" });
+        setOpen(false);
+        setCode("");
+        fetchAds();
+      }
     }
   };
 
@@ -73,14 +101,14 @@ const AdminAds = () => {
         <h1 className="text-2xl font-bold font-cyber">إدارة الإعلانات</h1>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="glow-purple">
+            <Button className="glow-purple" onClick={openCreate}>
               <Plus className="w-4 h-4 ml-2" />
               إضافة إعلان
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-card border-border">
             <DialogHeader>
-              <DialogTitle className="font-cyber">إضافة إعلان جديد</DialogTitle>
+              <DialogTitle className="font-cyber">{editingAd ? "تعديل الإعلان" : "إضافة إعلان جديد"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -120,7 +148,7 @@ const AdminAds = () => {
                   onChange={(e) => setCode(e.target.value)}
                 />
               </div>
-              <Button className="w-full glow-purple" onClick={createAd}>حفظ</Button>
+              <Button className="w-full glow-purple" onClick={saveAd}>{editingAd ? "تحديث" : "حفظ"}</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -161,6 +189,9 @@ const AdminAds = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(ad)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => toggleStatus(ad.id, ad.status)}>
                             {ad.status === "active" ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4 text-green-500" />}
                           </Button>
