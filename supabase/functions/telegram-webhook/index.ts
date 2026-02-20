@@ -82,6 +82,7 @@ serve(async (req) => {
               document: file.telegram_file_id,
               caption: `📄 <b>${file.filename}</b>\n📏 ${(file.size / 1048576).toFixed(2)} MB\n\nتم الإرسال من DarkCyberX Cloud ☁️`,
               parse_mode: "HTML",
+              protect_content: true,
             }),
           });
           const sendData = await sendResp.json();
