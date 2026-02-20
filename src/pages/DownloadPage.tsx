@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Download, FileIcon, Cloud, Shield, Loader2, AlertTriangle, Send } from "lucide-react";
+import { FileIcon, Cloud, Shield, Loader2, AlertTriangle, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -9,7 +9,6 @@ import AdBanner from "@/components/AdBanner";
 
 const DownloadPage = () => {
   const { slug } = useParams<{ slug: string }>();
-  const [downloading, setDownloading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [file, setFile] = useState<any>(null);
   const [error, setError] = useState("");
@@ -48,24 +47,6 @@ const DownloadPage = () => {
     };
     fetchFile();
   }, [slug]);
-
-  const handleDownload = async () => {
-    if (!slug) return;
-    setDownloading(true);
-    try {
-      // The function now streams the file directly via MTKruto.
-      // We navigate to the function URL with the apikey in query params to bypass Telegram Bot API's 20MB limit.
-      const downloadUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-download-link?slug=${slug}&apikey=${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`;
-
-      // Trigger download by opening the URL
-      window.location.href = downloadUrl;
-    } catch (err) {
-      setError("حدث خطأ أثناء التحميل");
-    } finally {
-      // We set a timeout here because location changes don't usually capture the 'finish' of a binary stream start
-      setTimeout(() => setDownloading(false), 3000);
-    }
-  };
 
   const formatSize = (bytes: number) => {
     if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + " GB";
@@ -112,35 +93,19 @@ const DownloadPage = () => {
                 <p className="text-muted-foreground text-sm mb-8">النوع: {file.mime_type || "غير معروف"}</p>
 
                 <div className="space-y-3">
-                  <div className="grid gap-4">
+                  <a
+                    href={`https://t.me/BotTelegramcloudbot?start=${file.unique_slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
                     <Button
                       size="lg"
-                      onClick={handleDownload}
-                      disabled={downloading}
                       className="w-full text-lg py-6 glow-purple font-cyber"
                     >
-                      {downloading ? (
-                        <><Loader2 className="w-5 h-5 ml-2 animate-spin" /> جارٍ التحضير...</>
-                      ) : (
-                        <><Download className="w-5 h-5 ml-2" /> تحميل مباشر</>
-                      )}
+                      <Send className="w-5 h-5 ml-2" /> استلام عبر تيليجرام
                     </Button>
-
-                    <a
-                      href={`https://t.me/BotTelegramcloudbot?start=${file.unique_slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block"
-                    >
-                      <Button
-                        size="lg"
-                        variant="outline"
-                        className="w-full text-lg py-6 border-primary/50 hover:bg-primary/10 font-cyber"
-                      >
-                        <Send className="w-5 h-5 ml-2" /> استلام عبر تيليجرام
-                      </Button>
-                    </a>
-                  </div>
+                  </a>
 
                   <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
                     <Shield className="w-3 h-3" />
