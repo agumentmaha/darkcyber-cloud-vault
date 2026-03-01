@@ -8,6 +8,79 @@ const corsHeaders = {
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
 
+/**
+ * Ensures a Telegram user has an auth account + profile.
+ * Returns the profile id or null on failure.
+ */
+async function ensureUser(
+  supabase: ReturnType<typeof createClient>,
+  telegramId: number,
+  firstName: string,
+  lastName: string,
+  username: string,
+): Promise<string | null> {
+  // Check if profile already exists
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("telegram_id", telegramId)
+    .maybeSingle();
+
+  if (existing) return existing.id;
+
+  // Create auth user
+  const STABLE_SALT = Deno.env.get("TELEGRAM_API_HASH") || "darkcyber_stable_salt";
+  const email = `tg_${telegramId}@darkcyberx.app`;
+  const password = `tg_${STABLE_SALT}_${telegramId}`;
+
+  console.log(`Auto-registering Telegram user: ${username} (ID: ${telegramId})`);
+
+  const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: {
+      username,
+      first_name: firstName,
+      last_name: lastName,
+      telegram_id: telegramId,
+    },
+  });
+
+  if (createError) {
+    // User might exist in auth but not have a profile with telegram_id
+    if (createError.message?.includes("already registered") || createError.message?.includes("unique constraint")) {
+      console.log("Auth user exists, finding and updating profile...");
+      // Find by email in auth, then update profile
+      const { data: users } = await supabase.auth.admin.listUsers();
+      const authUser = users?.users?.find((u: any) => u.email === email);
+      if (authUser) {
+        await supabase.from("profiles").update({
+          telegram_id: telegramId,
+          first_name: firstName,
+          last_name: lastName,
+          username: username || undefined,
+        }).eq("id", authUser.id);
+        return authUser.id;
+      }
+    }
+    console.error("Failed to create user:", createError);
+    return null;
+  }
+
+  // Update the profile created by the handle_new_user trigger
+  const userId = newUser.user.id;
+  await supabase.from("profiles").update({
+    telegram_id: telegramId,
+    first_name: firstName,
+    last_name: lastName,
+    username: username || `user_${telegramId}`,
+  }).eq("id", userId);
+
+  console.log(`User auto-registered: ${userId}`);
+  return userId;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -29,10 +102,24 @@ serve(async (req) => {
 
     const update = await req.json();
 
+    // Extract user info from any message type
+    const from = update.message?.from;
+    const chatId = update.message?.chat?.id;
+
     // Handle /start command
     const text = update.message?.text || "";
     if (text.startsWith("/start")) {
-      const chatId = update.message.chat.id;
+      // Auto-register user on /start
+      if (from && chatId) {
+        await ensureUser(
+          supabase,
+          from.id,
+          from.first_name || "",
+          from.last_name || "",
+          from.username || `user_${from.id}`,
+        );
+      }
+
       const parts = text.split(" ");
 
       if (parts.length > 1) {
@@ -59,7 +146,6 @@ serve(async (req) => {
         } else if (!file) {
           console.log(`No file found for slug: '${slug}'`);
 
-          // Debug: List some slugs to see what the bot sees
           const { data: allFiles } = await supabase.from("files").select("unique_slug").limit(5);
           const availableSlugs = allFiles?.map(f => f.unique_slug).join(", ") || "none";
 
@@ -73,7 +159,6 @@ serve(async (req) => {
           });
         } else {
           console.log(`File found: ${file.filename}`);
-          // Send the file directly
           const sendResp = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -123,13 +208,10 @@ serve(async (req) => {
       });
     }
 
-    const chatId = update.message.chat.id;
     const filename = doc.file_name || "unnamed_file";
     const fileSize = doc.file_size || 0;
     const mimeType = doc.mime_type || "application/octet-stream";
     const fileId = doc.file_id;
-
-    const ext = filename.toLowerCase().split(".").pop();
 
     // Check file size
     if (fileSize > MAX_FILE_SIZE) {
@@ -146,26 +228,25 @@ serve(async (req) => {
       });
     }
 
-    // Find user by telegram_id
-    console.log(`Searching for profile with telegram_id: ${chatId}`);
-    const { data: profile, error: searchError } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("telegram_id", chatId)
-      .maybeSingle();
+    // Auto-register user if needed, then get profile id
+    const profileId = from
+      ? await ensureUser(
+          supabase,
+          from.id,
+          from.first_name || "",
+          from.last_name || "",
+          from.username || `user_${from.id}`,
+        )
+      : null;
 
-    if (searchError) {
-      console.error("Profile search error:", searchError);
-    }
-
-    if (!profile) {
-      console.log(`Profile not found for chatId: ${chatId}`);
+    if (!profileId) {
+      console.log(`Could not find or create profile for chatId: ${chatId}`);
       await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: chatId,
-          text: `❌ يجب تسجيل الدخول في الموقع أولاً.\n\nالـ ID الخاص بك هو: <code>${chatId}</code>\nيرجى التأكد من ربطه بحسابك في الموقع.`,
+          text: `❌ حدث خطأ في إنشاء حسابك. يرجى المحاولة مرة أخرى.`,
           parse_mode: "HTML",
         }),
       });
@@ -177,7 +258,7 @@ serve(async (req) => {
     // Save file record
     const slug = crypto.randomUUID().replace(/-/g, "").substring(0, 12);
     const { error: insertError } = await supabase.from("files").insert({
-      user_id: profile.id,
+      user_id: profileId,
       telegram_file_id: fileId,
       filename,
       size: fileSize,
