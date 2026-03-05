@@ -19,7 +19,6 @@ import AdminStats from "./pages/admin/AdminStats";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminFiles from "./pages/admin/AdminFiles";
 import AdminAds from "./pages/admin/AdminAds";
-import MonetagAdManager from "./components/MonetagAdManager";
 import HeadAdInjector from "./components/HeadAdInjector";
 
 const queryClient = new QueryClient();
@@ -28,7 +27,6 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <BrowserRouter>
-        <MonetagAdManager />
         <HeadAdInjector />
         <AuthProvider>
           <Routes>
