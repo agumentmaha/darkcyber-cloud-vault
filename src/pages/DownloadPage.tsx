@@ -147,11 +147,6 @@ const DownloadPage = () => {
                     {downloading ? "جاري التحضير..." : "تحميل مباشر"}
                   </Button>
 
-                  {file.size > 20 * 1024 * 1024 && (
-                    <p className="text-xs text-muted-foreground">
-                      ⚠️ التحميل المباشر قد لا يعمل للملفات أكبر من 20MB
-                    </p>
-                  )}
 
                   <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
                     <Shield className="w-3 h-3" />
