@@ -102,6 +102,7 @@ const AdminUsers = () => {
                     <TableHead className="text-right">المستخدم</TableHead>
                     <TableHead className="text-right">Telegram ID</TableHead>
                     <TableHead className="text-right">التسجيل</TableHead>
+                    <TableHead className="text-right">الملفات</TableHead>
                     <TableHead className="text-right">الحالة</TableHead>
                     <TableHead className="text-right">إجراءات</TableHead>
                   </TableRow>
