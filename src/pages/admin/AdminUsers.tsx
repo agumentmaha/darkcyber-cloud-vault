@@ -117,6 +117,9 @@ const AdminUsers = () => {
                       <TableCell>{user.telegram_id || "—"}</TableCell>
                       <TableCell>{new Date(user.created_at).toLocaleDateString("ar")}</TableCell>
                       <TableCell>
+                        <Badge variant="outline">{fileCounts[user.id] || 0}</Badge>
+                      </TableCell>
+                      <TableCell>
                         <Badge variant={user.is_banned ? "destructive" : "default"}>
                           {user.is_banned ? "محظور" : "نشط"}
                         </Badge>
