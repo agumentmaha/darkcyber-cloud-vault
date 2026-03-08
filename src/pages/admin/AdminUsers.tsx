@@ -11,21 +11,28 @@ import { useToast } from "@/hooks/use-toast";
 const AdminUsers = () => {
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<any[]>([]);
+  const [fileCounts, setFileCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const [profilesRes, filesRes] = await Promise.all([
+      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+      supabase.from("files").select("user_id"),
+    ]);
 
-    if (error) {
-      console.error("Error fetching users:", error);
-      toast({ title: "خطأ في جلب المستخدمين", description: error.message, variant: "destructive" });
+    if (profilesRes.error) {
+      console.error("Error fetching users:", profilesRes.error);
+      toast({ title: "خطأ في جلب المستخدمين", description: profilesRes.error.message, variant: "destructive" });
     } else {
-      setUsers(data || []);
+      setUsers(profilesRes.data || []);
+    }
+
+    if (filesRes.data) {
+      const counts: Record<string, number> = {};
+      filesRes.data.forEach((f: any) => { counts[f.user_id] = (counts[f.user_id] || 0) + 1; });
+      setFileCounts(counts);
     }
     setLoading(false);
   };
