@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
       `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${file.telegram_file_id}`
     );
     const fileData = await fileResp.json();
+    console.log("Telegram getFile response:", JSON.stringify(fileData));
 
     if (fileData.ok && fileData.result?.file_path) {
       const downloadUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileData.result.file_path}`;
@@ -57,7 +58,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ error: "File expired or unavailable" }), {
+    return new Response(JSON.stringify({ 
+      error: "File expired or unavailable",
+      telegram_error: fileData.description || "Unknown error"
+    }), {
       status: 410,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
