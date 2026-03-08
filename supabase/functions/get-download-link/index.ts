@@ -44,17 +44,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if file is too large for direct download (20MB limit)
-    if (file.size > 20 * 1024 * 1024) {
-      return new Response(JSON.stringify({ 
-        error: "file_too_large",
-        message: "الملف أكبر من 20MB - يرجى استخدام البوت للاستلام"
-      }), {
-        status: 413,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const fileResp = await fetch(
       `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${file.telegram_file_id}`
     );

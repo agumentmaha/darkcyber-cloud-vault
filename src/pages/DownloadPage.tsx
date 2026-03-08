@@ -44,26 +44,13 @@ const DownloadPage = () => {
     setDownloading(true);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("get-download-link", {
-        body: null,
-        method: "GET",
-      });
-
-      // supabase.functions.invoke doesn't support query params easily, use fetch directly
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const resp = await fetch(
         `https://${projectId}.supabase.co/functions/v1/get-download-link?slug=${file.unique_slug}`
       );
       const result = await resp.json();
 
-      if (resp.status === 413) {
-        toast({
-          title: "الملف كبير جداً",
-          description: "هذا الملف أكبر من 20MB - يرجى استلامه عبر بوت Telegram",
-          variant: "destructive",
-        });
-      } else if (resp.ok && result.url) {
-        // Trigger download
+      if (resp.ok && result.url) {
         const link = document.createElement("a");
         link.href = result.url;
         link.download = result.filename || file.filename;
@@ -160,11 +147,6 @@ const DownloadPage = () => {
                     {downloading ? "جاري التحضير..." : "تحميل مباشر"}
                   </Button>
 
-                  {file.size > 20 * 1024 * 1024 && (
-                    <p className="text-xs text-muted-foreground">
-                      ⚠️ التحميل المباشر قد لا يعمل للملفات أكبر من 20MB
-                    </p>
-                  )}
 
                   <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
                     <Shield className="w-3 h-3" />
