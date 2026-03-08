@@ -171,7 +171,14 @@ serve(async (req) => {
             }),
           });
           const sendData = await sendResp.json();
-          if (!sendData.ok) {
+          if (sendData.ok) {
+            // Update telegram_file_id with the fresh one from the sent message
+            const newFileId = sendData.result?.document?.file_id;
+            if (newFileId && newFileId !== file.telegram_file_id) {
+              console.log(`Updating file_id for slug ${slug}: ${file.telegram_file_id} -> ${newFileId}`);
+              await supabase.from("files").update({ telegram_file_id: newFileId }).eq("id", file.id);
+            }
+          } else {
             console.error("Telegram sendDocument error:", sendData);
             await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
               method: "POST",
