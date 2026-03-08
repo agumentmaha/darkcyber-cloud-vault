@@ -131,21 +131,27 @@ const DownloadPage = () => {
                     </Button>
                   </a>
 
-                  {/* زر التحميل المباشر */}
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full text-lg py-6 font-cyber border-primary/30 hover:bg-primary/10"
-                    onClick={handleDirectDownload}
-                    disabled={downloading}
-                  >
-                    {downloading ? (
-                      <Loader2 className="w-5 h-5 ml-2 animate-spin" />
-                    ) : (
-                      <Download className="w-5 h-5 ml-2" />
-                    )}
-                    {downloading ? "جاري التحضير..." : "تحميل مباشر"}
-                  </Button>
+                  {/* زر التحميل المباشر - يعمل فقط للملفات ≤ 20MB */}
+                  {file.size <= 20 * 1024 * 1024 ? (
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full text-lg py-6 font-cyber border-primary/30 hover:bg-primary/10"
+                      onClick={handleDirectDownload}
+                      disabled={downloading}
+                    >
+                      {downloading ? (
+                        <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                      ) : (
+                        <Download className="w-5 h-5 ml-2" />
+                      )}
+                      {downloading ? "جاري التحضير..." : "تحميل مباشر"}
+                    </Button>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      ⚠️ التحميل المباشر غير متاح للملفات أكبر من 20MB — استخدم زر تيليجرام أعلاه
+                    </p>
+                  )}
 
 
                   <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
