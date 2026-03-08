@@ -12,7 +12,6 @@ Deno.serve(async (req) => {
 
   try {
     const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
-
     if (!BOT_TOKEN) {
       throw new Error("Telegram credentials not configured");
     }
@@ -32,7 +31,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get file record
     const { data: file, error } = await supabase
       .from("files")
       .select("*")
@@ -46,15 +44,27 @@ Deno.serve(async (req) => {
       });
     }
 
-    const fileResp = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${file.telegram_file_id}`);
+    // Check if file is too large for direct download (20MB limit)
+    if (file.size > 20 * 1024 * 1024) {
+      return new Response(JSON.stringify({ 
+        error: "file_too_large",
+        message: "الملف أكبر من 20MB - يرجى استخدام البوت للاستلام"
+      }), {
+        status: 413,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const fileResp = await fetch(
+      `https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${file.telegram_file_id}`
+    );
     const fileData = await fileResp.json();
+
     if (fileData.ok && fileData.result?.file_path) {
-      return new Response(null, {
-        status: 302,
-        headers: {
-          ...corsHeaders,
-          "Location": `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileData.result.file_path}`,
-        }
+      const downloadUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileData.result.file_path}`;
+      return new Response(JSON.stringify({ url: downloadUrl, filename: file.filename }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 

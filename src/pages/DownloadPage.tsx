@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { FileIcon, Cloud, Shield, Loader2, AlertTriangle, Send } from "lucide-react";
+import { FileIcon, Cloud, Shield, Loader2, AlertTriangle, Send, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import AdBanner from "@/components/AdBanner";
 
 const DownloadPage = () => {
@@ -12,7 +12,8 @@ const DownloadPage = () => {
   const [loading, setLoading] = useState(true);
   const [file, setFile] = useState<any>(null);
   const [error, setError] = useState("");
-
+  const [downloading, setDownloading] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchFile = async () => {
@@ -36,6 +37,56 @@ const DownloadPage = () => {
   const formatSize = (bytes: number) => {
     if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + " GB";
     return (bytes / 1048576).toFixed(2) + " MB";
+  };
+
+  const handleDirectDownload = async () => {
+    if (!file?.unique_slug) return;
+    setDownloading(true);
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("get-download-link", {
+        body: null,
+        method: "GET",
+      });
+
+      // supabase.functions.invoke doesn't support query params easily, use fetch directly
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const resp = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/get-download-link?slug=${file.unique_slug}`
+      );
+      const result = await resp.json();
+
+      if (resp.status === 413) {
+        toast({
+          title: "الملف كبير جداً",
+          description: "هذا الملف أكبر من 20MB - يرجى استلامه عبر بوت Telegram",
+          variant: "destructive",
+        });
+      } else if (resp.ok && result.url) {
+        // Trigger download
+        const link = document.createElement("a");
+        link.href = result.url;
+        link.download = result.filename || file.filename;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        toast({
+          title: "خطأ في التحميل",
+          description: result.message || result.error || "حدث خطأ، جرب الاستلام عبر البوت",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ في الاتصال، جرب مرة أخرى",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloading(false);
+    }
   };
 
   return (
@@ -78,6 +129,7 @@ const DownloadPage = () => {
                 <p className="text-muted-foreground text-sm mb-8">النوع: {file.mime_type || "غير معروف"}</p>
 
                 <div className="space-y-3">
+                  {/* زر الاستلام عبر تيليجرام */}
                   <a
                     href={`https://t.me/BotTelegramcloudbot?start=${file.unique_slug}`}
                     target="_blank"
@@ -91,6 +143,28 @@ const DownloadPage = () => {
                       <Send className="w-5 h-5 ml-2" /> استلام عبر تيليجرام
                     </Button>
                   </a>
+
+                  {/* زر التحميل المباشر */}
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full text-lg py-6 font-cyber border-primary/30 hover:bg-primary/10"
+                    onClick={handleDirectDownload}
+                    disabled={downloading}
+                  >
+                    {downloading ? (
+                      <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                    ) : (
+                      <Download className="w-5 h-5 ml-2" />
+                    )}
+                    {downloading ? "جاري التحضير..." : "تحميل مباشر"}
+                  </Button>
+
+                  {file.size > 20 * 1024 * 1024 && (
+                    <p className="text-xs text-muted-foreground">
+                      ⚠️ التحميل المباشر قد لا يعمل للملفات أكبر من 20MB
+                    </p>
+                  )}
 
                   <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
                     <Shield className="w-3 h-3" />
